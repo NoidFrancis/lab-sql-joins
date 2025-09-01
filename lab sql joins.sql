@@ -62,3 +62,44 @@ GROUP BY f.film_id, f.title
 ORDER BY rental_count DESC, f.title
 LIMIT 10;
 
+
+/* Bonus C: availability now = at least one copy not out on rental */
+SELECT CASE WHEN COUNT(*) > 0 THEN 'Yes' ELSE 'No' END AS can_be_rented_now
+FROM inventory AS i
+JOIN film      AS f ON f.film_id = i.film_id
+LEFT JOIN rental AS r
+  ON r.inventory_id = i.inventory_id
+ AND r.return_date IS NULL      -- still out
+WHERE f.title = 'Academy Dinosaur'
+  AND i.store_id = 1
+  AND r.rental_id IS NULL;      -- means this copy is not currently rented
+
+
+/* Bonus D: title availability using CASE + IFNULL */
+SELECT f.title,
+       CASE WHEN IFNULL(inv.copies, 0) = 0
+            THEN 'NOT available'
+            ELSE 'Available'
+       END AS availability
+FROM film AS f
+LEFT JOIN (
+  SELECT film_id, COUNT(*) AS copies
+  FROM inventory
+  GROUP BY film_id
+) AS inv ON inv.film_id = f.film_id
+ORDER BY f.title;
+
+-- Optional check:
+SELECT COUNT(*) AS not_in_inventory_titles
+FROM (
+  SELECT f.title,
+         CASE WHEN IFNULL(inv.copies, 0) = 0 THEN 'NOT available' ELSE 'Available' END AS availability
+  FROM film AS f
+  LEFT JOIN (
+    SELECT film_id, COUNT(*) AS copies
+    FROM inventory
+    GROUP BY film_id
+  ) AS inv ON inv.film_id = f.film_id
+) q
+WHERE q.availability = 'NOT available';
+
